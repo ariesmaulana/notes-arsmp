@@ -14,14 +14,34 @@
 <body>
   {{ if not .IsPost }}
   <div class="post-site-nav">
-    <h1 class="post-site-title"><a href="/">Arsmp</a></h1>
-    <p class="post-site-tagline">Personal notes and thoughts</p>
+    <div class="nav-content">
+      <div class="nav-title">
+        <h1 class="post-site-title"><a href="/">Arsmp</a></h1>
+        <p class="post-site-tagline">Personal notes and thoughts</p>
+      </div>
+      <div class="nav-search">
+        <form class="header-search-form" action="/search" method="get">
+          <input 
+            type="text" 
+            name="q" 
+            class="header-search-input" 
+            placeholder="Search..." 
+            autocomplete="off"
+          >
+          <button type="submit" class="header-search-button">
+            <span class="search-icon">🔍</span>
+          </button>
+        </form>
+      </div>
+    </div>
   </div>
   {{ end }}
 
   <main>
     {{ if .IsPost }}
       {{ template "post-content" . }}
+    {{ else if .Is404 }}
+      {{ template "404-content" . }}
     {{ else }}
       {{ template "index-content" . }}
     {{ end }}

@@ -1,0 +1,29 @@
+{{ define "404-content" }}
+<section class="content">
+  <div class="error-page">
+    <h1 class="error-title">404 - Page Not Found</h1>
+    <p class="error-message">The page you're looking for doesn't exist.</p>
+    
+    <div class="search-section">
+      <p class="search-prompt">Try searching for what you're looking for:</p>
+      <form class="search-form" action="/search" method="get">
+        <div class="search-input-group">
+          <input 
+            type="text" 
+            name="q" 
+            class="search-input" 
+            placeholder="Search posts..." 
+            autofocus
+            autocomplete="off"
+          >
+          <button type="submit" class="search-button">Search</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="back-section">
+      <a class="back-link" href="/">← Back to homepage</a>
+    </div>
+  </div>
+</section>
+{{ end }}

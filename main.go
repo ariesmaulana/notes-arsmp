@@ -23,7 +23,7 @@ import (
 
 const (
 	defaultPostsDir  = "posts"
-	defaultPerPage   = 2
+	defaultPerPage   = 5
 	defaultPort      = ":8080"
 	dateLayoutDay    = "20060102"
 	dateLayoutSecond = "20060102150505"
@@ -149,6 +149,11 @@ func main() {
 	r.Get("/search", app.handleSearch)
 	fileServer(r, "/static", http.Dir("static"))
 
+	// Catch-all handler for 404s
+	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
+		app.render404(w, r)
+	})
+
 	log.Printf("[server] listening on %s ...", *port)
 	if err := http.ListenAndServe(*port, r); err != nil {
 		log.Fatal("[server] fatal:", err)
@@ -160,6 +165,7 @@ func NewApp(postsDir string, perPage int, siteTitle string) (*App, error) {
 		filepath.Join("templates", "layout.html"),
 		filepath.Join("templates", "index.html"),
 		filepath.Join("templates", "post.html"),
+		filepath.Join("templates", "404.html"),
 	)
 
 	if err != nil {
@@ -277,6 +283,18 @@ func deriveTitleFromSlug(slug string) string {
 	return strings.Join(parts, " ")
 }
 
+func (a *App) render404(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotFound)
+	data := map[string]any{
+		"Title": "Page Not Found · " + a.SiteTitle,
+		"Is404": true,
+	}
+	if err := a.Templates.ExecuteTemplate(w, "layout", data); err != nil {
+		log.Printf("[404] render error: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
 func fileServer(r *chi.Mux, path string, root http.FileSystem) {
 	fs := http.StripPrefix(path, http.FileServer(root))
 	r.Get(path+"/*", func(w http.ResponseWriter, r *http.Request) {
@@ -295,7 +313,7 @@ func (a *App) handleIndexPage(w http.ResponseWriter, r *http.Request) {
 	n, err := strconv.Atoi(nStr)
 	if err != nil || n < 1 {
 		log.Printf("[index] invalid page param: %s", nStr)
-		http.NotFound(w, r)
+		a.render404(w, r)
 		return
 	}
 	a.renderIndex(w, n, r)
@@ -309,7 +327,7 @@ func (a *App) renderIndex(w http.ResponseWriter, page int, r *http.Request) {
 	start := (page - 1) * a.PerPage
 	if start >= total && page != 1 {
 		log.Printf("[index] page out of range: %d", page)
-		http.NotFound(w, r)
+		a.render404(w, r)
 		return
 	}
 	end := start + a.PerPage
@@ -345,7 +363,7 @@ func (a *App) handlePost(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		a.mu.RUnlock()
 		log.Printf("[post] not found: %s", slug)
-		http.NotFound(w, r)
+		a.render404(w, r)
 		return
 	}
 	meta := a.Posts[idx]
@@ -382,7 +400,7 @@ func (a *App) handleTag(w http.ResponseWriter, r *http.Request) {
 	if !ok || len(idxs) == 0 {
 		a.mu.RUnlock()
 		log.Printf("[tag] not found: %s", tag)
-		http.NotFound(w, r)
+		a.render404(w, r)
 		return
 	}
 	var items []PostMeta
