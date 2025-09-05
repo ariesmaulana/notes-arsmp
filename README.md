@@ -7,6 +7,7 @@ A lightweight, fast blog engine written in Go that serves markdown posts with au
 - **Markdown Posts**: Write posts in markdown format with frontmatter metadata
 - **Search**: Full-text search across post titles and tags
 - **Tags**: Organize posts with tags and browse by tag
+- **RSS Feed**: Automatically generated RSS feed for recent posts at `/rss`
 - **Pagination**: Configurable posts per page
 - **Hot Reload**: Automatic post reloading when files change
 - **Clean UI**: Minimal, responsive design
@@ -59,6 +60,17 @@ go run main.go -port ":3000" -title "My Blog" -perpage 10
 # Use different posts directory
 go run main.go -posts "content" -port ":8080"
 ```
+
+## RSS Feed
+
+The blog automatically generates an RSS feed available at `/rss`. The feed includes:
+
+- Recent 20 posts (configurable in the code)
+- Post title, description, and publication date
+- Post tags as categories
+- Proper RSS 2.0 format with Atom extensions
+
+You can subscribe to the RSS feed using any RSS reader by navigating to `http://localhost:8080/rss` (or your domain + `/rss` in production).
 
 ## Building and Deployment
 
