@@ -23,7 +23,7 @@ import (
 
 const (
 	defaultPostsDir  = "posts"
-	defaultPerPage   = 10
+	defaultPerPage   = 2
 	defaultPort      = ":8080"
 	dateLayoutDay    = "20060102"
 	dateLayoutSecond = "20060102150505"
