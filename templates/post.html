@@ -1,0 +1,23 @@
+{{ define "post-content" }}
+<article class="post-article">
+  <header>
+    <h2 class="post-title">{{ .Post.Meta.Title }}</h2>
+    <div class="meta">
+      <time datetime="{{ .Post.Meta.Date.Format "2006-01-02T15:04:05Z07:00" }}">{{ .Post.Meta.Date.Format "2006-01-02 15:04" }}</time>
+      {{ if .Post.Meta.Tags }}
+        <span class="tags">
+          {{ range .Post.Meta.Tags }}
+            <a class="tag" href="/tag/{{ . }}">{{ . }}</a>
+          {{ end }}
+        </span>
+      {{ end }}
+    </div>
+  </header>
+
+  <div class="post-body">
+    {{ .Post.HTML }}
+  </div>
+
+  <p><a class="back" href="/">← Kembali</a></p>
+</article>
+{{ end }}

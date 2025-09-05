@@ -1,0 +1,43 @@
+{{ define "layout" }}
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{ .Title }}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <h1 class="site-title"><a href="/">Arsmp</a></h1>
+      <nav class="site-nav">
+        <form action="/search" method="get" class="search-form" role="search">
+          <input name="q" type="search" placeholder="Cari judul atau tag…" value="{{ .Query }}" aria-label="search">
+          <button type="submit">Cari</button>
+        </form>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    {{ if .IsPost }}
+      {{ template "post-content" . }}
+    {{ else }}
+      {{ template "index-content" . }}
+    {{ end }}
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <small>© <span id="year"></span> · Powered by Go</small>
+    </div>
+  </footer>
+
+  <script>
+    // set current year
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
+{{ end }}

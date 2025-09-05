@@ -1,0 +1,51 @@
+{{ define "index-content" }}
+<section class="listing">
+  {{ if .IsSearch }}
+    <h2>Hasil pencarian untuk «{{ .Query }}»</h2>
+  {{ else if .Tag }}
+    <h2>Posts dengan tag «{{ .Tag }}»</h2>
+  {{ else }}
+    <h2>Daftar Post</h2>
+  {{ end }}
+
+  {{ if eq (len .Posts) 0 }}
+    <p class="muted">Belum ada post yang cocok.</p>
+  {{ else }}
+    <ul class="post-list">
+      {{ range .Posts }}
+        <li class="post-item">
+          <a class="post-link" href="/post/{{ .Slug }}">{{ .Title }}</a>
+          <div class="meta">
+            <time datetime="{{ .Date.Format "2006-01-02T15:04:05Z07:00" }}">{{ .Date.Format "2006-01-02" }}</time>
+            {{ if .Tags }}
+              <span class="tags">
+                {{ range .Tags }}
+                  <a class="tag" href="/tag/{{ . }}">{{ . }}</a>
+                {{ end }}
+              </span>
+            {{ end }}
+          </div>
+        </li>
+      {{ end }}
+    </ul>
+  {{ end }}
+</section>
+
+{{ if and (not .Tag) (not .IsSearch) }}
+<nav class="pagination">
+  {{ if .HasPrev }}
+    {{ if .IsFirst }}
+      <a class="pager" href="/" rel="prev">← Prev</a>
+    {{ else }}
+      <a class="pager" href="{{ .PrevURL }}" rel="prev">← Prev</a>
+    {{ end }}
+  {{ end }}
+
+  <span class="page-indicator">Halaman {{ .Page }}</span>
+
+  {{ if .HasNext }}
+    <a class="pager" href="{{ .NextURL }}" rel="next">Next →</a>
+  {{ end }}
+</nav>
+{{ end }}
+{{ end }}
