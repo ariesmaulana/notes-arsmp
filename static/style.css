@@ -225,6 +225,28 @@ body {
   line-height: 1;
 }
 
+.rss-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  margin-left: 8px;
+  background: #f8f9fa;
+  color: #666;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.rss-link:hover {
+  background: #e9ecef;
+  border-color: #0066cc;
+  color: #0066cc;
+}
+
 .post-header {
   margin: 40px 0 50px;
   padding: 0;
@@ -501,6 +523,11 @@ code[class*="language-"] {
   
   .header-search-button {
     padding: 8px 10px;
+  }
+  
+  .rss-link {
+    padding: 8px 10px;
+    margin-left: 4px;
   }
   
   .post-header {

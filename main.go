@@ -147,6 +147,7 @@ func main() {
 	r.Get("/post/{slug}", app.handlePost)
 	r.Get("/tag/{tag}", app.handleTag)
 	r.Get("/search", app.handleSearch)
+	r.Get("/rss", app.handleRSS)
 	fileServer(r, "/static", http.Dir("static"))
 
 	// Catch-all handler for 404s
@@ -451,4 +452,120 @@ func (a *App) handleSearch(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[search] render error: %s: %v", q, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+func (a *App) handleRSS(w http.ResponseWriter, r *http.Request) {
+	a.mu.RLock()
+	posts := make([]PostMeta, len(a.Posts))
+	copy(posts, a.Posts)
+	a.mu.RUnlock()
+
+	// Limit to recent 20 posts for RSS
+	if len(posts) > 20 {
+		posts = posts[:20]
+	}
+
+	// Set content type for RSS/XML
+	w.Header().Set("Content-Type", "application/rss+xml; charset=utf-8")
+
+	// Build RSS XML manually
+	rssContent := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>%s</title>
+    <description>Latest posts from %s</description>
+    <link>%s</link>
+    <atom:link href="%s/rss" rel="self" type="application/rss+xml"/>
+    <lastBuildDate>%s</lastBuildDate>
+    <language>en-us</language>`,
+		a.SiteTitle,
+		a.SiteTitle,
+		getBaseURL(r),
+		getBaseURL(r),
+		time.Now().Format(time.RFC1123Z))
+
+	for _, post := range posts {
+		// Read post content for description
+		description := post.Title
+		if content := a.getPostContent(post); content != "" {
+			// Truncate content for description (first 200 chars)
+			if len(content) > 200 {
+				description = content[:200] + "..."
+			} else {
+				description = content
+			}
+		}
+
+		// Escape XML content
+		description = template.HTMLEscapeString(description)
+		title := template.HTMLEscapeString(post.Title)
+
+		rssContent += fmt.Sprintf(`
+    <item>
+      <title>%s</title>
+      <description>%s</description>
+      <link>%s/post/%s</link>
+      <guid>%s/post/%s</guid>
+      <pubDate>%s</pubDate>`,
+			title,
+			description,
+			getBaseURL(r),
+			post.Slug,
+			getBaseURL(r),
+			post.Slug,
+			post.Date.Format(time.RFC1123Z))
+
+		// Add categories (tags)
+		for _, tag := range post.Tags {
+			rssContent += fmt.Sprintf(`
+      <category>%s</category>`, template.HTMLEscapeString(tag))
+		}
+
+		rssContent += `
+    </item>`
+	}
+
+	rssContent += `
+  </channel>
+</rss>`
+
+	w.Write([]byte(rssContent))
+}
+
+func (a *App) getPostContent(meta PostMeta) string {
+	b, err := os.ReadFile(filepath.Join(a.PostsDir, meta.Filename))
+	if err != nil {
+		log.Printf("failed read file: %v", err)
+		return ""
+	}
+	_, _, body := parseMeta(string(b))
+
+	// Remove markdown formatting for RSS description
+	lines := strings.Split(body, "\n")
+	var plainText []string
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, "```") {
+			continue
+		}
+		// Remove basic markdown formatting
+		line = strings.ReplaceAll(line, "**", "")
+		line = strings.ReplaceAll(line, "*", "")
+		line = strings.ReplaceAll(line, "`", "")
+		if line != "" {
+			plainText = append(plainText, line)
+		}
+		if len(strings.Join(plainText, " ")) > 300 {
+			break
+		}
+	}
+	return strings.Join(plainText, " ")
+}
+
+func getBaseURL(r *http.Request) string {
+	scheme := "http"
+	if r.TLS != nil {
+		scheme = "https"
+	}
+	return fmt.Sprintf("%s://%s", scheme, r.Host)
 }
