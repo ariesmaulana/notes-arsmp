@@ -358,6 +358,15 @@ code[class*="language-"] {
   margin-bottom: 4px;
 }
 
+.post-content img {
+  max-width: 100%;
+  height: auto;
+  margin: 24px 0;
+  border-radius: 4px;
+  border: 1px solid #e9ecef;
+  display: block;
+}
+
 .post-footer {
   padding-top: 30px;
   border-top: 1px solid #eee;
