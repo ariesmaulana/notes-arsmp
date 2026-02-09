@@ -32,14 +32,118 @@ cd notes-arsmp
 go mod download
 ```
 
-3. Run the application:
+3. Build the application:
 ```bash
-go run main.go
+go build -o blog main.go
 ```
 
-4. Open your browser and visit `http://localhost:8080`
+## Usage
 
-### Command Line Options
+### Creating a New Post
+
+Use the `new` command to quickly create a new blog post:
+
+```bash
+# Create a post with title only
+./blog new "My Awesome Post"
+
+# Create a post with tags
+./blog new --tags "python,django,web" "Django Tips and Tricks"
+
+# Using go run
+go run main.go new "Another Post Title"
+```
+
+This will:
+- Generate a file with the format: `YYYYMMDDHHMMSS-slug.md`
+- Create a slug from the title (lowercase, hyphens for spaces)
+- Pre-fill the frontmatter with title and tag fields
+- Save the file in the `posts` directory
+
+Example output:
+```
+Created: posts/20260126143000-my-awesome-post.md
+```
+
+The generated post file will have this structure:
+```markdown
+title: My Awesome Post
+tag: python,django,web
+
+[Your content goes here]
+```
+
+### Running the Server
+
+Start the web server to view your blog:
+
+```bash
+# Run with defaults (port :8080)
+./blog serve
+
+# Or simply (serve is the default command)
+./blog
+
+# Run with custom settings
+./blog serve -port ":3000" -title "My Blog" -perpage 10
+
+# Using go run
+go run main.go serve
+```
+Open your browser and visit `http://localhost:8080`
+
+### Command Reference
+
+```bash
+# Post creation command
+./blog new [--tags tag1,tag2] <title>
+./blog new --posts "content" "My Post"    # Custom posts directory
+
+# Server command  
+./blog serve [options]
+./blog serve -port ":3000"                # Custom port
+./blog serve -perpage 10                  # Posts per page
+./blog serve -title "My Blog"             # Site title
+./blog serve -posts "content"             # Custom posts directory
+
+# Default behavior (backward compatible)
+./blog                                     # Runs serve with defaults
+./blog -port ":3000"                       # Runs serve with custom port
+```
+
+### Post Format
+
+Posts are markdown files with frontmatter metadata. The filename format is:
+- `YYYYMMDD-slug.md` (date only)
+- `YYYYMMDDHHMMSS-slug.md` (date and time)
+
+Frontmatter format:
+```markdown
+title: Your Post Title
+tag: tag1, tag2, tag3
+
+Your markdown content starts here...
+```
+
+## Development Workflow
+
+1. Create a new post:
+   ```bash
+   ./blog new --tags "tutorial,go" "Getting Started with Go"
+   ```
+
+2. Edit the generated file in your favorite editor
+
+3. Start the development server:
+   ```bash
+   go run main.go
+   ```
+
+4. The server will automatically reload when you modify posts
+
+## Command Line Options (Legacy)
+
+For backward compatibility, you can still use the original command format:
 
 ```bash
 go run main.go [options]
@@ -51,15 +155,7 @@ Options:
   -title string     Site title (default "Arsmp")
 ```
 
-### Example Usage
-
-```bash
-# Run on custom port with different settings
-go run main.go -port ":3000" -title "My Blog" -perpage 10
-
-# Use different posts directory
-go run main.go -posts "content" -port ":8080"
-```
+Note: The new `serve` subcommand is recommended for clarity.
 
 ## RSS Feed
 
