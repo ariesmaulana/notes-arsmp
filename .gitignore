@@ -1,0 +1,12 @@
+# Binaries
+blog
+*.exe
+*.dll
+*.so
+*.dylib
+# Test binary
+*.test
+# Coverage
+*.out
+# OS files
+.DS_Store

@@ -26,7 +26,7 @@ const (
 	defaultPerPage   = 5
 	defaultPort      = ":8080"
 	dateLayoutDay    = "20060102"
-	dateLayoutSecond = "20060102150505"
+	dateLayoutSecond = "20060102150405"
 )
 
 // Data structure
@@ -131,11 +131,81 @@ func (a *App) watchPosts() {
 var filenameRe = regexp.MustCompile(`^(\d{8}|\d{14})-(.+?)\.md$`)
 
 func main() {
-	postDir := flag.String("posts", defaultPostsDir, "Directory containing post")
-	port := flag.String("port", defaultPort, "HTTP listen address")
-	perPage := flag.Int("perpage", defaultPerPage, "Post per page")
-	siteTitle := flag.String("title", "Arsmp", "Site Title")
-	flag.Parse()
+	if len(os.Args) < 2 {
+		runServe(os.Args)
+		return
+	}
+
+	switch os.Args[1] {
+	case "new":
+		runNew(os.Args[2:])
+	case "serve":
+		runServe(os.Args[2:])
+	default:
+		runServe(os.Args[1:])
+	}
+}
+
+func runNew(args []string) {
+	fs := flag.NewFlagSet("new", flag.ExitOnError)
+	postsDir := fs.String("posts", defaultPostsDir, "Directory containing posts")
+	tags := fs.String("tags", "", "Comma-separated tags")
+
+	if err := fs.Parse(args); err != nil {
+		log.Fatalf("[new] error parsing flags: %v", err)
+	}
+
+	if fs.NArg() < 1 {
+		log.Fatal("[new] error: post title is required\nUsage: new [--tags tag1,tag2] <title>")
+	}
+
+	title := strings.Join(fs.Args(), " ")
+	slug := generateSlug(title)
+	timestamp := time.Now().Format(dateLayoutSecond)
+	filename := fmt.Sprintf("%s-%s.md", timestamp, slug)
+	filePath := filepath.Join(*postsDir, filename)
+
+	tagValue := ""
+	if *tags != "" {
+		tagValue = *tags
+	}
+	content := fmt.Sprintf("title: %s\ntag: %s\n\n", title, tagValue)
+
+	if err := os.WriteFile(filePath, []byte(content), 0644); err != nil {
+		log.Fatalf("[new] error creating file: %v", err)
+	}
+
+	fmt.Printf("Created: %s\n", filePath)
+}
+
+func generateSlug(title string) string {
+	slug := strings.ToLower(title)
+	slug = strings.ReplaceAll(slug, " ", "-")
+
+	var result strings.Builder
+	for _, r := range slug {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-' {
+			result.WriteRune(r)
+		}
+	}
+
+	slug = result.String()
+	for strings.Contains(slug, "--") {
+		slug = strings.ReplaceAll(slug, "--", "-")
+	}
+
+	slug = strings.Trim(slug, "-")
+
+	return slug
+}
+
+func runServe(args []string) {
+	fs := flag.NewFlagSet("serve", flag.ExitOnError)
+	postDir := fs.String("posts", defaultPostsDir, "Directory containing post")
+	port := fs.String("port", defaultPort, "HTTP listen address")
+	perPage := fs.Int("perpage", defaultPerPage, "Post per page")
+	siteTitle := fs.String("title", "Arsmp", "Site Title")
+	fs.Parse(args)
 
 	app, err := NewApp(*postDir, *perPage, *siteTitle)
 	if err != nil {
