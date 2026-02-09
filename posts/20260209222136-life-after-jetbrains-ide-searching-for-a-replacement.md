@@ -9,12 +9,12 @@ I mostly use Zed because it feels more snappy and is already good with Python an
 
 For me, test suite is not a big deal. Most of the time when I need to run tests, I prefer using the CLI, go test or uv run pytest, so it’s still okay. But I’m still searching for a replacement for how JetBrains has the best DX to resolve conflicts. Currently, I use or try to use VS Code and Sublime Merge with three-way diff.
 
-![resolve conflicts using VS Code](static/images/vscode-conflict.png "vscode conflict")
+![resolve conflicts using VS Code](/static/images/vscode-conflict.png "vscode conflict")
 
 
 And this is on Sublime Merge
 
-![resolve conflicts using Sublime merge](static/images/sublime-merge-conflict.png "sublime conflict")
+![resolve conflicts using Sublime merge](/static/images/sublime-merge-conflict.png "sublime conflict")
 
 I still want to try a lot of tools that have DX like JetBrains, but most of the apps are already pricey, and if I must pay, I prefer just subscribing to JetBrains products.
 
