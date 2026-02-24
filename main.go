@@ -218,6 +218,7 @@ func runServe(args []string) {
 	r.Get("/tag/{tag}", app.handleTag)
 	r.Get("/search", app.handleSearch)
 	r.Get("/rss", app.handleRSS)
+	r.Get("/index.xml", app.handleRSS)
 	fileServer(r, "/static", http.Dir("static"))
 
 	// Catch-all handler for 404s
