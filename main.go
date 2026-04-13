@@ -175,6 +175,7 @@ func runServe(args []string) {
 		log.Fatalf("[init] error: %v", err)
 	}
 	r := chi.NewRouter()
+	metricsHandler := MetricsHandler()
 	r.Get("/", app.handleIndex)
 	r.Get("/page/{n}", app.handleIndexPage)
 	r.Get("/post/{slug}", app.handlePost)
@@ -183,7 +184,7 @@ func runServe(args []string) {
 	r.Get("/rss", app.handleRSS)
 	r.Get("/index.xml", app.handleRSS)
 	r.Get("/metrics", func(w http.ResponseWriter, r *http.Request) {
-		MetricsHandler().ServeHTTP(w, r)
+		metricsHandler.ServeHTTP(w, r)
 	})
 	fileServer(r, "/static")
 
