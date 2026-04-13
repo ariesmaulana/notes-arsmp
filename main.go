@@ -182,6 +182,9 @@ func runServe(args []string) {
 	r.Get("/search", app.handleSearch)
 	r.Get("/rss", app.handleRSS)
 	r.Get("/index.xml", app.handleRSS)
+	r.Get("/metrics", func(w http.ResponseWriter, r *http.Request) {
+		MetricsHandler().ServeHTTP(w, r)
+	})
 	fileServer(r, "/static")
 
 	// Catch-all handler for 404s
@@ -190,6 +193,7 @@ func runServe(args []string) {
 	})
 
 	log.Printf("[server] listening on %s ...", *port)
+	log.Printf("[server] metrics available at http://localhost%s/metrics", *port)
 	if err := http.ListenAndServe(*port, r); err != nil {
 		log.Fatal("[server] fatal:", err)
 	}
