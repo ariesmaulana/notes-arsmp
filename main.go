@@ -175,6 +175,7 @@ func runServe(args []string) {
 		log.Fatalf("[init] error: %v", err)
 	}
 	r := chi.NewRouter()
+	r.Use(HTTPMetricsMiddleware)
 	metricsHandler := MetricsHandler()
 	r.Get("/", app.handleIndex)
 	r.Get("/page/{n}", app.handleIndexPage)
