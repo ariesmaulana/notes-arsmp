@@ -1,10 +1,12 @@
 package main
 
 import (
+	"embed"
 	"errors"
 	"flag"
 	"fmt"
 	"html/template"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
@@ -16,13 +18,20 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fsnotify/fsnotify"
 	"github.com/go-chi/chi/v5"
 	"github.com/yuin/goldmark"
 )
 
+//go:embed templates/*
+var embeddedTemplates embed.FS
+
+//go:embed static/*
+var embeddedStatic embed.FS
+
+//go:embed posts/*
+var embeddedPosts embed.FS
+
 const (
-	defaultPostsDir  = "posts"
 	defaultPerPage   = 5
 	defaultPort      = ":8080"
 	dateLayoutDay    = "20060102"
@@ -51,14 +60,14 @@ type App struct {
 	PerPage   int
 	Templates *template.Template
 	SiteTitle string
-	PostsDir  string
 	Markdown  goldmark.Markdown
+	PostsFS   embed.FS
 
 	mu sync.RWMutex
 }
 
-func (a *App) reloadPosts() error {
-	posts, err := loadPosts(a.PostsDir)
+func (a *App) loadPosts() error {
+	posts, err := loadPosts(a.PostsFS)
 	if err != nil {
 		return err
 	}
@@ -75,57 +84,12 @@ func (a *App) reloadPosts() error {
 		}
 	}
 
-	a.mu.Lock()
 	a.Posts = posts
 	a.BySlug = bySlug
 	a.TagIndex = tagIndex
-	a.mu.Unlock()
 
-	log.Printf("[reload] posts reloaded: %d posts", len(posts))
+	log.Printf("[init] loaded %d posts", len(posts))
 	return nil
-}
-
-func (a *App) watchPosts() {
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		log.Printf("[watcher] error init: %v", err)
-		return
-	}
-	defer watcher.Close()
-
-	if err := watcher.Add(a.PostsDir); err != nil {
-		log.Printf("[watcher] cannot watch dir: %v", err)
-		return
-	}
-	log.Printf("[watcher] watching directory: %s", a.PostsDir)
-
-	for {
-		select {
-		case event, ok := <-watcher.Events:
-			if !ok {
-				return
-			}
-			switch {
-			case event.Op&fsnotify.Create != 0:
-				log.Printf("[watcher] new file: %s", event.Name)
-			case event.Op&fsnotify.Write != 0:
-				log.Printf("[watcher] modified: %s", event.Name)
-			case event.Op&fsnotify.Remove != 0:
-				log.Printf("[watcher] removed: %s", event.Name)
-			case event.Op&fsnotify.Rename != 0:
-				log.Printf("[watcher] renamed: %s", event.Name)
-			}
-			if err := a.reloadPosts(); err != nil {
-				log.Printf("[watcher] reload error: %v", err)
-			}
-
-		case err, ok := <-watcher.Errors:
-			if !ok {
-				return
-			}
-			log.Printf("[watcher] error: %v", err)
-		}
-	}
 }
 
 var filenameRe = regexp.MustCompile(`^(\d{8}|\d{14})-(.+?)\.md$`)
@@ -148,7 +112,7 @@ func main() {
 
 func runNew(args []string) {
 	fs := flag.NewFlagSet("new", flag.ExitOnError)
-	postsDir := fs.String("posts", defaultPostsDir, "Directory containing posts")
+	postsDir := fs.String("posts", "posts", "Directory containing posts")
 	tags := fs.String("tags", "", "Comma-separated tags")
 
 	if err := fs.Parse(args); err != nil {
@@ -201,13 +165,12 @@ func generateSlug(title string) string {
 
 func runServe(args []string) {
 	fs := flag.NewFlagSet("serve", flag.ExitOnError)
-	postDir := fs.String("posts", defaultPostsDir, "Directory containing post")
 	port := fs.String("port", defaultPort, "HTTP listen address")
 	perPage := fs.Int("perpage", defaultPerPage, "Post per page")
 	siteTitle := fs.String("title", "Arsmp", "Site Title")
 	fs.Parse(args)
 
-	app, err := NewApp(*postDir, *perPage, *siteTitle)
+	app, err := NewApp(*perPage, *siteTitle)
 	if err != nil {
 		log.Fatalf("[init] error: %v", err)
 	}
@@ -219,7 +182,7 @@ func runServe(args []string) {
 	r.Get("/search", app.handleSearch)
 	r.Get("/rss", app.handleRSS)
 	r.Get("/index.xml", app.handleRSS)
-	fileServer(r, "/static", http.Dir("static"))
+	fileServer(r, "/static")
 
 	// Catch-all handler for 404s
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
@@ -232,12 +195,12 @@ func runServe(args []string) {
 	}
 }
 
-func NewApp(postsDir string, perPage int, siteTitle string) (*App, error) {
-	tpl, err := template.ParseFiles(
-		filepath.Join("templates", "layout.html"),
-		filepath.Join("templates", "index.html"),
-		filepath.Join("templates", "post.html"),
-		filepath.Join("templates", "404.html"),
+func NewApp(perPage int, siteTitle string) (*App, error) {
+	tpl, err := template.ParseFS(embeddedTemplates,
+		"templates/layout.html",
+		"templates/index.html",
+		"templates/post.html",
+		"templates/404.html",
 	)
 
 	if err != nil {
@@ -248,23 +211,20 @@ func NewApp(postsDir string, perPage int, siteTitle string) (*App, error) {
 		PerPage:   perPage,
 		Templates: tpl,
 		SiteTitle: siteTitle,
-		PostsDir:  postsDir,
 		Markdown:  goldmark.New(),
+		PostsFS:   embeddedPosts,
 	}
 
-	if err := app.reloadPosts(); err != nil {
+	if err := app.loadPosts(); err != nil {
 		return nil, err
 	}
-	log.Printf("[init] loaded %d posts", len(app.Posts))
-
-	go app.watchPosts()
 
 	return app, nil
 }
 
 // domain utility
-func loadPosts(dir string) ([]PostMeta, error) {
-	entries, err := os.ReadDir(dir)
+func loadPosts(postsFS embed.FS) ([]PostMeta, error) {
+	entries, err := fs.ReadDir(postsFS, "posts")
 	if err != nil {
 		return nil, fmt.Errorf("read posts dir: %w", err)
 	}
@@ -284,7 +244,7 @@ func loadPosts(dir string) ([]PostMeta, error) {
 		ts := m[1]
 		slug := m[2]
 
-		b, err := os.ReadFile(filepath.Join(dir, name))
+		b, err := postsFS.ReadFile(filepath.Join("posts", name))
 		if err != nil {
 			log.Printf("[load] read error: %s: %v", name, err)
 			continue
@@ -367,8 +327,13 @@ func (a *App) render404(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func fileServer(r *chi.Mux, path string, root http.FileSystem) {
-	fs := http.StripPrefix(path, http.FileServer(root))
+func fileServer(r *chi.Mux, path string) {
+	staticFS, err := fs.Sub(embeddedStatic, "static")
+	if err != nil {
+		log.Printf("[static] error sub FS: %v", err)
+		return
+	}
+	fs := http.StripPrefix(path, http.FileServer(http.FS(staticFS)))
 	r.Get(path+"/*", func(w http.ResponseWriter, r *http.Request) {
 		fs.ServeHTTP(w, r)
 	})
@@ -441,7 +406,7 @@ func (a *App) handlePost(w http.ResponseWriter, r *http.Request) {
 	meta := a.Posts[idx]
 	a.mu.RUnlock()
 
-	b, err := os.ReadFile(filepath.Join(a.PostsDir, meta.Filename))
+	b, err := a.PostsFS.ReadFile(filepath.Join("posts", meta.Filename))
 	if err != nil {
 		log.Printf("[post] read error: %s: %v", meta.Filename, err)
 		http.Error(w, "cannot read post", http.StatusInternalServerError)
@@ -604,7 +569,7 @@ func (a *App) handleRSS(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) getPostContent(meta PostMeta) string {
-	b, err := os.ReadFile(filepath.Join(a.PostsDir, meta.Filename))
+	b, err := a.PostsFS.ReadFile(filepath.Join("posts", meta.Filename))
 	if err != nil {
 		log.Printf("failed read file: %v", err)
 		return ""
