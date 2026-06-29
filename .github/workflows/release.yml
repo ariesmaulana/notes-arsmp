@@ -12,9 +12,9 @@ permissions:
   packages: write
 
 jobs:
-  # ── Binary releases (v* tags only) ──────────────────────────────
+  # ── Binary releases ────────────────────────────────────────────
   binaries:
-    if: startsWith(github.ref_name, 'v')
+    if: startsWith(github.ref_name, 'v') || startsWith(github.ref_name, 'release-')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
