@@ -175,8 +175,6 @@ func runServe(args []string) {
 		log.Fatalf("[init] error: %v", err)
 	}
 	r := chi.NewRouter()
-	r.Use(HTTPMetricsMiddleware)
-	metricsHandler := MetricsHandler()
 	r.Get("/", app.handleIndex)
 	r.Get("/page/{n}", app.handleIndexPage)
 	r.Get("/post/{slug}", app.handlePost)
@@ -184,9 +182,6 @@ func runServe(args []string) {
 	r.Get("/search", app.handleSearch)
 	r.Get("/rss", app.handleRSS)
 	r.Get("/index.xml", app.handleRSS)
-	r.Get("/metrics", func(w http.ResponseWriter, r *http.Request) {
-		metricsHandler.ServeHTTP(w, r)
-	})
 	fileServer(r, "/static")
 
 	// Catch-all handler for 404s
